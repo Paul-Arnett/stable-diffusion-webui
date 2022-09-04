@@ -6,6 +6,7 @@ import re
 import numpy as np
 from PIL import Image, ImageFont, ImageDraw, PngImagePlugin
 
+from modules.yaml_dump import yaml_write_info
 import modules.shared
 from modules.shared import opts
 
@@ -243,7 +244,7 @@ def sanitize_filename_part(text):
 def save_image(image, path, basename, seed=None, prompt=None, extension='png', info=None, short_filename=False, no_prompt=False):
     if short_filename or prompt is None or seed is None:
         file_decoration = ""
-    elif opts.save_to_dirs:
+    elif (basename != "" or opts.save_to_dirs) and (basename == "" or opts.save_to_dirs_grid):
         file_decoration = f"-{seed}"
     else:
         file_decoration = f"-{seed}-{sanitize_filename_part(prompt)[:128]}"
@@ -254,7 +255,7 @@ def save_image(image, path, basename, seed=None, prompt=None, extension='png', i
     else:
         pnginfo = None
 
-    if opts.save_to_dirs and not no_prompt:
+    if (basename != "" or opts.save_to_dirs) and not no_prompt and (basename == "" or opts.save_to_dirs_grid) :
         words = re.findall(r'\w+', prompt or "")
         if len(words) == 0:
             words = ["empty"]
@@ -289,8 +290,11 @@ def save_image(image, path, basename, seed=None, prompt=None, extension='png', i
         image.save(f"{fullfn_without_extension}.jpg", quality=opts.jpeg_quality, pnginfo=pnginfo)
 
     if opts.save_txt and info is not None:
-        with open(f"{fullfn_without_extension}.txt", "w", encoding="utf8") as file:
-            file.write(info + "\n")
+        if opts.save_info_format == "yaml":
+            yaml_write_info(fullfn_without_extension, info, image, basename)   
+        else:
+            with open(f"{fullfn_without_extension}.txt", "w", encoding="utf8") as file:
+                file.write(info + "\n")
 
 
 class Upscaler:

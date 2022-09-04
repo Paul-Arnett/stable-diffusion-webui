@@ -63,7 +63,8 @@ class Options:
         "outdir_grids": OptionInfo("", "Output dictectory for grids; if empty, defaults to two directories below"),
         "outdir_txt2img_grids": OptionInfo("outputs/txt2img-grids", 'Output dictectory for txt2img grids'),
         "outdir_img2img_grids": OptionInfo("outputs/img2img-grids", 'Output dictectory for img2img grids'),
-        "save_to_dirs": OptionInfo(False, "When writing images/grids, create a directory with name derived from the prompt"),
+        "save_to_dirs": OptionInfo(False, "When writing single images, create a directory with name derived from the prompt"),
+        "save_to_dirs_grid": OptionInfo(False, "When writing grids, create a directory with name derived from the prompt."),
         "save_to_dirs_prompt_len": OptionInfo(10, "When using above, how many words from prompt to put into directory name", gr.Slider, {"minimum": 1, "maximum": 32, "step": 1}),
         "outdir_save": OptionInfo("log/images", "Directory for saving images using the Save button"),
         "samples_save": OptionInfo(True, "Save indiviual samples"),
@@ -80,6 +81,7 @@ class Options:
         "font": OptionInfo("arial.ttf", "Font for image grids  that have text"),
         "enable_emphasis": OptionInfo(True, "Use (text) to make model pay more attention to text text and [text] to make it pay less attention"),
         "save_txt": OptionInfo(False, "Create a text file next to every image with generation parameters."),
+        "save_info_format": OptionInfo("txt", "Format to save image info in. Currently either: txt or yaml."),
         "ESRGAN_tile": OptionInfo(192, "Tile size for ESRGAN upscaling. 0 = no tiling.", gr.Slider, {"minimum": 0, "maximum": 512, "step": 16}),
         "ESRGAN_tile_overlap": OptionInfo(8, "Tile overlap, in pixels for ESRGAN upscaling. Low values = visible seam.", gr.Slider, {"minimum": 0, "maximum": 48, "step": 1}),
     }
