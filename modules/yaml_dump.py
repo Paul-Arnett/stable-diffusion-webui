@@ -18,36 +18,44 @@ def yaml_write_info(filename, info, image, basename):
 
 def yaml_parse_image_info(info, image, basename):
     parsedInfo = {
-        "batch_size": 1, # currently not working
+        "batch_size": 1,
         "cfg_scale": 0,
         "ddim_steps": 0,
         "height": 0,
-        "n_iter": 0, # currently not working
+        "batch_pos": 0,
         "prompt": 'null',
         "sampler_name": "null",
         "seed": 0,
-        "target": "txt2img",
+        "target": "txt2img", # currently not working
         "width": 0,
         "options": ""
     }
-
+    
     parsedInfo["prompt"] = re.search(r'^.+\n', info).group(0).strip()
     infoSplit = info.replace(str(parsedInfo["prompt"]), '').split(",")
-    try:
-        parsedInfo["ddim_steps"] = info_parse_int(infoSplit[0])
-        samplerName = "k_"+infoSplit[1].split(": ")[1].lower().replace(' ', '_')
-        parsedInfo["sampler_name"] = samplerName
-        parsedInfo["cfg_scale"] = info_parse_int(infoSplit[2])
-        parsedInfo["seed"] = info_parse_int(infoSplit[3])
-        if len(infoSplit) > 4:
-            parsedInfo["options"] = infoSplit[4].lstrip()
-    except IndexError:
-        print(f"ERROR: YAML parsing error. -> {infoSplit}")
+    #print(f"YAML parsing. -> {infoSplit}")
+    for i, s in enumerate(infoSplit):
+        if 'Steps:' in s:
+            parsedInfo["ddim_steps"] = info_parse_int(infoSplit[i])
+        elif 'Sampler:' in s:
+            samplerName = "k_"+infoSplit[i].split(": ")[1].lower().replace(' ', '_')
+            parsedInfo["sampler_name"] = samplerName
+        elif 'CFG scale:' in s:
+            parsedInfo["cfg_scale"] = info_parse_int(infoSplit[i])
+        elif 'Seed:' in s:
+            parsedInfo["seed"] = info_parse_int(infoSplit[i])
+        elif 'GFPGAN:' in s:
+            parsedInfo["options"] = 'GFPGAN'
+        elif 'Batch size:' in s:
+            parsedInfo["batch_size"] = info_parse_int(infoSplit[i])
+        elif 'Batch pos:' in s and basename == "":
+            parsedInfo["batch_pos"] = info_parse_int(infoSplit[i])
 
     if basename == "": # height and width for single image
         parsedInfo["height"] = int(image.height)
         parsedInfo["width"] = int(image.width)
-    else: # exclude height and width for grid
+    else: # exclude height, width, and batch position for grid
+        parsedInfo.pop("batch_pos")
         parsedInfo.pop("height")
         parsedInfo.pop("width")
     return parsedInfo
