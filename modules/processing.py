@@ -99,6 +99,10 @@ def create_random_tensors(shape, seeds):
     return x
 
 
+def set_seed(seed):
+    return int(random.randrange(4294967294)) if seed is None or seed == -1 else seed
+
+
 def process_images(p: StableDiffusionProcessing) -> Processed:
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
 
@@ -107,7 +111,7 @@ def process_images(p: StableDiffusionProcessing) -> Processed:
     assert p.prompt is not None
     torch_gc()
 
-    seed = int(random.randrange(4294967294)) if p.seed == -1 else p.seed
+    seed = set_seed(p.seed)
 
     os.makedirs(p.outpath_samples, exist_ok=True)
     os.makedirs(p.outpath_grids, exist_ok=True)
@@ -342,7 +346,9 @@ class StableDiffusionProcessingImg2Img(StableDiffusionProcessing):
                 self.paste_to = (x1, y1, x2-x1, y2-y1)
             else:
                 self.image_mask = images.resize_image(self.resize_mode, self.image_mask, self.width, self.height)
-                self.mask_for_overlay = self.image_mask
+                np_mask = np.array(self.image_mask)
+                np_mask = 255 - np.clip((255 - np_mask.astype(np.float)) * 2, 0, 255).astype(np.uint8)
+                self.mask_for_overlay = Image.fromarray(np_mask)
 
             self.overlay_images = []
 
