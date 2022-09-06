@@ -9,6 +9,7 @@ from modules import images
 from modules.processing import process_images, Processed
 from modules.shared import opts, cmd_opts, state
 import modules.sd_samplers
+import re
 
 
 def apply_field(field):
@@ -79,8 +80,6 @@ def draw_xy_grid(xs, ys, x_label, y_label, cell):
 
             res.append(processed.images[0])
 
-            state.nextjob()
-
     grid = images.image_grid(res, rows=len(ys))
     grid = images.draw_grid_annotations(grid, res[0].width, res[0].height, hor_texts, ver_texts)
 
@@ -88,6 +87,8 @@ def draw_xy_grid(xs, ys, x_label, y_label, cell):
 
     return first_pocessed
 
+
+re_range = re.compile(r"\s*([+-]?\s*\d+)\s*-\s*([+-]?\s*\d+)(?:\s*\(([+-]\d+)\s*\))?\s*")
 
 class Script(scripts.Script):
     def title(self):
@@ -118,11 +119,13 @@ class Script(scripts.Script):
                 valslist_ext = []
 
                 for val in valslist:
-                    if "-" in val:
-                        s = val.split("-")
-                        start = int(s[0])
-                        end = int(s[1])+1
-                        step = 1 if len(s) < 3 else int(s[2])
+                    m = re_range.fullmatch(val)
+                    if m is not None:
+
+                        start = int(m.group(1))
+                        end = int(m.group(2))+1
+                        step = int(m.group(3)) if m.group(3) is not None else 1
+
                         valslist_ext += list(range(start, end, step))
                     else:
                         valslist_ext.append(val)

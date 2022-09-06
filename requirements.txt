@@ -8,3 +8,8 @@ torch
 transformers
 omegaconf
 pytorch_lightning
+basicsr
+diffusers
+invisible-watermark
+git+https://github.com/crowsonkb/k-diffusion.git
+git+https://github.com/TencentARC/GFPGAN.git
