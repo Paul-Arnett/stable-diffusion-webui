@@ -1,11 +1,13 @@
 import argparse
 import json
 import os
+
 import gradio as gr
 import torch
 
 import modules.artists
 from modules.paths import script_path, sd_path
+import modules.codeformer_model
 
 config_filename = "config.json"
 
@@ -34,11 +36,15 @@ parser.add_argument("--opt-split-attention", action='store_true', help="enable o
 parser.add_argument("--listen", action='store_true', help="launch gradio with 0.0.0.0 as server name, allowing to respond to network requests")
 cmd_opts = parser.parse_args()
 
-cpu = torch.device("cpu")
-gpu = torch.device("cuda")
-device = gpu if torch.cuda.is_available() else cpu
+if torch.has_cuda:
+    device = torch.device("cuda")
+elif torch.has_mps:
+    device = torch.device("mps")
+else:
+    device = torch.device("cpu")
 batch_cond_uncond = cmd_opts.always_batch_cond_uncond or not (cmd_opts.lowvram or cmd_opts.medvram)
 parallel_processing_allowed = not cmd_opts.lowvram and not cmd_opts.medvram
+
 
 class State:
     interrupted = False
@@ -65,6 +71,7 @@ state = State()
 
 artist_db = modules.artists.ArtistsDatabase(os.path.join(script_path, 'artists.csv'))
 
+face_restorers = []
 
 def find_any_font():
     fonts = ['/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf']
@@ -118,6 +125,8 @@ class Options:
         "upscale_at_full_resolution_padding": OptionInfo(16, "Inpainting at full resolution: padding, in pixels, for the masked region.", gr.Slider, {"minimum": 0, "maximum": 128, "step": 4}),
         "show_progressbar": OptionInfo(True, "Show progressbar"),
         "show_progress_every_n_steps": OptionInfo(0, "Show show image creation progress every N sampling steps. Set 0 to disable.", gr.Slider, {"minimum": 0, "maximum": 32, "step": 1}),
+        "face_restoration_model": OptionInfo(None, "Face restoration model", gr.Radio, lambda: {"choices": [x.name() for x in face_restorers]}),
+        "code_former_weight": OptionInfo(0.5, "CodeFormer weight parameter; 0 = maximum effect; 1 = minimum effect", gr.Slider, {"minimum": 0, "maximum": 1, "step": 0.01}),
     }
 
     def __init__(self):
