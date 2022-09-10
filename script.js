@@ -26,7 +26,7 @@ titles = {
     "latent nothing": "fill it with latent space zeroes",
     "Inpaint at full resolution": "Upscale masked region to target resolution, do inpainting, downscale back and paste into original image",
 
-    "Denoising strength": "Determines how little respect the algorithm should have for image's content. At 0, nothing will change, and at 1 you'll get an unrelated image.",
+    "Denoising strength": "Determines how little respect the algorithm should have for image's content. At 0, nothing will change, and at 1 you'll get an unrelated image. With values below 1.0, processing will take less steps than the Sampling Steps slider specifies.",
     "Denoising strength change factor": "In loopback mode, on each loop the denoising strength is multiplied by this value. <1 means decreasing variety so your sequence will converge on a fixed picture. >1 means increasing variety so your sequence will become more and more chaotic.",
 
     "Interrupt": "Stop processing images and return any results accumulated so far.",
@@ -109,32 +109,11 @@ function addTitles(root){
 
 }
 
-tabNames =  {"txt2img": 1, "img2img": 1, "Extras": 1, "PNG Info": 1, "Settings": 1}
-
 document.addEventListener("DOMContentLoaded", function() {
     var mutationObserver = new MutationObserver(function(m){
         addTitles(gradioApp());
-
-        // fix for gradio breaking when you switch away from tab with mask
-        gradioApp().querySelectorAll('button').forEach(function(button){
-            title = button.textContent.trim()
-            if(tabNames[button.textContent.trim()]==null) return;
-
-            if(button.onclick == null){
-                button.onclick = function(){
-                    console.log("hiding mask")
-                    mask_buttons = gradioApp().querySelectorAll('#img2maskimg button');
-                    if(mask_buttons.length == 2){
-                        mask_buttons[1].click();
-                    }
-                }
-            }
-
-        })
     });
     mutationObserver.observe( gradioApp(), { childList:true, subtree:true })
-
-
 });
 
 function selected_gallery_index(){
@@ -156,12 +135,11 @@ function extract_image_from_gallery(gallery){
     index = selected_gallery_index()
 
     if (index < 0 || index >= gallery.length){
-        return []
+        return [null]
     }
 
     return gallery[index];
 }
-
 
 function requestProgress(){
     btn = gradioApp().getElementById("check_progress");

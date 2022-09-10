@@ -37,7 +37,8 @@ parser.add_argument("--esrgan-models-path", type=str, help="path to directory wi
 parser.add_argument("--opt-split-attention", action='store_true', help="enable optimization that reduce vram usage by a lot for about 10%% decrease in performance")
 parser.add_argument("--listen", action='store_true', help="launch gradio with 0.0.0.0 as server name, allowing to respond to network requests")
 parser.add_argument("--port", type=int, help="launch gradio with given server port, you need root/admin rights for ports < 1024, defaults to 7860 if available", default=None)
-parser.add_argument("--show-negative-prompt", action='store_true', help="enable the field that lets you input negative prompt", default=False)
+parser.add_argument("--show-negative-prompt", action='store_true', help="does not do anything", default=False)
+parser.add_argument("--ui-config-file", type=str, help="filename to use for ui configuration", default=os.path.join(script_path, 'ui-config.json'))
 
 cmd_opts = parser.parse_args()
 
@@ -97,12 +98,12 @@ class Options:
         "outdir_grids": OptionInfo("", "Output directory for grids; if empty, defaults to two directories below"),
         "outdir_txt2img_grids": OptionInfo("outputs/txt2img-grids", 'Output directory for txt2img grids'),
         "outdir_img2img_grids": OptionInfo("outputs/img2img-grids", 'Output directory for img2img grids'),
-        "save_to_dirs": OptionInfo(False, "When writing single images, create a directory with name derived from the prompt"),
-        "save_to_dirs_grid": OptionInfo(False, "When writing grids, create a directory with name derived from the prompt."),
+        "save_to_dirs": OptionInfo(False, "When writing images, create a directory with name derived from the prompt"),
+        "grid_save_to_dirs": OptionInfo(False, "When writing grids, create a directory with name derived from the prompt"),
         "save_to_dirs_prompt_len": OptionInfo(10, "When using above, how many words from prompt to put into directory name", gr.Slider, {"minimum": 1, "maximum": 32, "step": 1}),
         "outdir_save": OptionInfo("log/images", "Directory for saving images using the Save button"),
         "samples_save": OptionInfo(True, "Save indiviual samples"),
-        "samples_format": OptionInfo('png', 'File format for indiviual samples'),
+        "samples_format": OptionInfo('png', 'File format for individual samples'),
         "grid_save": OptionInfo(True, "Save image grids"),
         "return_grid": OptionInfo(True, "Show grid in results for web"),
         "grid_format": OptionInfo('png', 'File format for grids'),

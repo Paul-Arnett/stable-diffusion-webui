@@ -6,6 +6,7 @@ import re
 import numpy as np
 from PIL import Image, ImageFont, ImageDraw, PngImagePlugin
 from fonts.ttf import Roboto
+import string
 
 from modules.yaml_dump import yaml_write_info
 import modules.shared
@@ -236,6 +237,7 @@ def resize_image(resize_mode, im, width, height):
 
 
 invalid_filename_chars = '<>:"/\\|?*\n'
+re_nonletters = re.compile(r'[\s'+string.punctuation+']+')
 
 
 def sanitize_filename_part(text):
@@ -243,6 +245,9 @@ def sanitize_filename_part(text):
 
 
 def save_image(image, path, basename, seed=None, prompt=None, extension='png', info=None, short_filename=False, no_prompt=False):
+    # would be better to add this as an argument in future, but will do for now
+    is_a_grid = basename != ""
+
     if short_filename or prompt is None or seed is None:
         file_decoration = ""
     elif (basename != "" or opts.save_to_dirs) and (basename == "" or opts.save_to_dirs_grid):
@@ -256,12 +261,14 @@ def save_image(image, path, basename, seed=None, prompt=None, extension='png', i
     else:
         pnginfo = None
 
-    if (basename != "" or opts.save_to_dirs) and not no_prompt and (basename == "" or opts.save_to_dirs_grid) :
-        words = re.findall(r'\w+', prompt or "")
+    save_to_dirs = (is_a_grid and opts.grid_save_to_dirs) or (not is_a_grid and opts.save_to_dirs)
+
+    if save_to_dirs and not no_prompt:
+        words = [x for x in re_nonletters.split(prompt or "") if len(x)>0]
         if len(words) == 0:
             words = ["empty"]
 
-        dirname = " ".join(words[0:opts.save_to_dirs_prompt_len])
+        dirname = " ".join(words[0:opts.save_to_dirs_prompt_len]).strip()
         path = os.path.join(path, dirname)
 
     os.makedirs(path, exist_ok=True)
