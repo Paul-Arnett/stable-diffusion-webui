@@ -9,7 +9,7 @@ import tqdm
 
 import modules.artists
 from modules.paths import script_path, sd_path
-import modules.codeformer_model
+import modules.styles
 
 config_filename = "config.json"
 
@@ -75,18 +75,10 @@ state = State()
 
 artist_db = modules.artists.ArtistsDatabase(os.path.join(script_path, 'artists.csv'))
 
+styles_filename = os.path.join(script_path, 'styles.csv')
+prompt_styles = modules.styles.load_styles(styles_filename)
+
 face_restorers = []
-
-
-def find_any_font():
-    fonts = ['/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf']
-
-    for font in fonts:
-        if os.path.exists(font):
-            return font
-
-    return "Arial.TTF"
-
 
 class Options:
     class OptionInfo:
@@ -120,7 +112,7 @@ class Options:
         "jpeg_quality": OptionInfo(80, "Quality for saved jpeg images", gr.Slider, {"minimum": 1, "maximum": 100, "step": 1}),
         "export_for_4chan": OptionInfo(True, "If PNG image is larger than 4MB or any dimension is larger than 4000, downscale and save copy as JPG"),
         "enable_pnginfo": OptionInfo(True, "Save text information about generation parameters as chunks to png files"),
-        "font": OptionInfo(find_any_font(), "Font for image grids  that have text"),
+        "font": OptionInfo("", "Font for image grids that have text"),
         "enable_emphasis": OptionInfo(True, "Use (text) to make model pay more attention to text text and [text] to make it pay less attention"),
         "save_txt": OptionInfo(False, "Create a text file next to every image with generation parameters."),
         "save_info_format": OptionInfo("txt", "Format to save image info in. Currently either: txt or yaml."),

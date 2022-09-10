@@ -5,6 +5,7 @@ import re
 
 import numpy as np
 from PIL import Image, ImageFont, ImageDraw, PngImagePlugin
+from fonts.ttf import Roboto
 
 from modules.yaml_dump import yaml_write_info
 import modules.shared
@@ -133,7 +134,7 @@ def draw_grid_annotations(im, width, height, hor_texts, ver_texts):
 
     fontsize = (width + height) // 25
     line_spacing = fontsize // 2
-    fnt = ImageFont.truetype(opts.font, fontsize)
+    fnt = ImageFont.truetype(opts.font or Roboto, fontsize)
     color_active = (0, 0, 0)
     color_inactive = (153, 153, 153)
 
