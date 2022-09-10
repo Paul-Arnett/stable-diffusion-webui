@@ -22,7 +22,6 @@ def yaml_parse_image_info(info, image, basename):
         "cfg_scale": 0,
         "ddim_steps": 0,
         "height": 0,
-        "batch_pos": 0,
         "prompt": 'null',
         "sampler_name": "null",
         "seed": 0,
@@ -32,10 +31,13 @@ def yaml_parse_image_info(info, image, basename):
     }
     
     parsedInfo["prompt"] = re.search(r'^.+\n', info).group(0).strip()
-    infoSplit = info.replace(str(parsedInfo["prompt"]), '').split(",")
+    infoSplit = re.split(',|\n', info.replace(str(parsedInfo["prompt"]), ''))
     #print(f"YAML parsing. -> {infoSplit}")
     for i, s in enumerate(infoSplit):
-        if 'Steps:' in s:
+        print('STRING: '+s)
+        if 'Negative prompt:' in s:
+            parsedInfo.update({"prompt_negative": infoSplit[i].split(": ")[1]})
+        elif 'Steps:' in s:
             parsedInfo["ddim_steps"] = info_parse_int(infoSplit[i])
         elif 'Sampler:' in s:
             samplerName = "k_"+infoSplit[i].split(": ")[1].lower().replace(' ', '_')
@@ -49,7 +51,7 @@ def yaml_parse_image_info(info, image, basename):
         elif 'Batch size:' in s:
             parsedInfo["batch_size"] = info_parse_int(infoSplit[i])
         elif 'Batch pos:' in s and basename == "":
-            parsedInfo["batch_pos"] = info_parse_int(infoSplit[i])
+            parsedInfo.update({"batch_pos": info_parse_int(infoSplit[i])})
 
     if basename == "": # height and width for single image
         parsedInfo["height"] = int(image.height)

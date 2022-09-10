@@ -250,7 +250,7 @@ def save_image(image, path, basename, seed=None, prompt=None, extension='png', i
 
     if short_filename or prompt is None or seed is None:
         file_decoration = ""
-    elif (basename != "" or opts.save_to_dirs) and (basename == "" or opts.save_to_dirs_grid):
+    elif basename != "" or opts.save_to_dirs:
         file_decoration = f"-{seed}"
     else:
         file_decoration = f"-{seed}-{sanitize_filename_part(prompt)[:128]}"
