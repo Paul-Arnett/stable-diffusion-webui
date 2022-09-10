@@ -31,33 +31,34 @@ def yaml_parse_image_info(info, image, basename):
     }
     
     parsedInfo["prompt"] = re.search(r'^.+\n', info).group(0).strip()
+    if 'Negative prompt:' in info:
+        negPrompt = re.search(r'\n.+\n', info).group(0)
+        parsedInfo["prompt_negative"] = negPrompt.split(": ")[1].strip()
+        info = info.replace(str(negPrompt), '')
     infoSplit = re.split(',|\n', info.replace(str(parsedInfo["prompt"]), ''))
     #print(f"YAML parsing. -> {infoSplit}")
-    for i, s in enumerate(infoSplit):
-        print('STRING: '+s)
-        if 'Negative prompt:' in s:
-            parsedInfo.update({"prompt_negative": infoSplit[i].split(": ")[1]})
-        elif 'Steps:' in s:
-            parsedInfo["ddim_steps"] = info_parse_int(infoSplit[i])
+    for s in infoSplit:
+        #print('STRING: '+s)
+        if 'Steps:' in s:
+            parsedInfo["ddim_steps"] = info_parse_int(s)
         elif 'Sampler:' in s:
-            samplerName = "k_"+infoSplit[i].split(": ")[1].lower().replace(' ', '_')
+            samplerName = "k_"+s.split(": ")[1].lower().replace(' ', '_')
             parsedInfo["sampler_name"] = samplerName
         elif 'CFG scale:' in s:
-            parsedInfo["cfg_scale"] = info_parse_int(infoSplit[i])
+            parsedInfo["cfg_scale"] = info_parse_int(s)
         elif 'Seed:' in s:
-            parsedInfo["seed"] = info_parse_int(infoSplit[i])
-        elif 'GFPGAN:' in s:
-            parsedInfo["options"] = 'GFPGAN'
+            parsedInfo["seed"] = info_parse_int(s)
+        elif 'Face restoration:' in s:
+            parsedInfo["options"] = s.split(": ")[1]
         elif 'Batch size:' in s:
-            parsedInfo["batch_size"] = info_parse_int(infoSplit[i])
+            parsedInfo["batch_size"] = info_parse_int(s)
         elif 'Batch pos:' in s and basename == "":
-            parsedInfo.update({"batch_pos": info_parse_int(infoSplit[i])})
+            parsedInfo.update({"batch_pos": info_parse_int(s)})
 
     if basename == "": # height and width for single image
         parsedInfo["height"] = int(image.height)
         parsedInfo["width"] = int(image.width)
     else: # exclude height, width, and batch position for grid
-        parsedInfo.pop("batch_pos")
         parsedInfo.pop("height")
         parsedInfo.pop("width")
     return parsedInfo
