@@ -228,25 +228,30 @@ def create_seed_inputs():
     return seed, subseed, subseed_strength, seed_resize_from_h, seed_resize_from_w
 
 
-def add_style(style_name, text):
-    if style_name is None:
+def add_style(name: str, prompt: str, negative_prompt: str):
+    if name is None:
         return [gr_show(), gr_show()]
 
-    style = modules.styles.PromptStyle(style_name, text)
-
-    modules.styles.save_style(shared.styles_filename, style)
-
+    style = modules.styles.PromptStyle(name, prompt, negative_prompt)
     shared.prompt_styles[style.name] = style
+    # Save all loaded prompt styles: this allows us to update the storage format in the future more easily, because we
+    # reserialize all styles every time we save them
+    modules.styles.save_styles(shared.styles_filename, shared.prompt_styles.values())
 
-    update = {"visible": True, "choices": [k for k, v in shared.prompt_styles.items()], "__type__": "update"}
+    update = {"visible": True, "choices": list(shared.prompt_styles), "__type__": "update"}
     return [update, update]
 
 
+def interrogate(image):
+    prompt = shared.interrogator.interrogate(image)
+
+    return gr_show(True) if prompt is None else prompt
+
 def create_ui(txt2img, img2img, run_extras, run_pnginfo):
     with gr.Blocks(analytics_enabled=False) as txt2img_interface:
-        with gr.Row():
+        with gr.Row(elem_id="toprow"):
             txt2img_prompt = gr.Textbox(label="Prompt", elem_id="txt2img_prompt", show_label=False, placeholder="Prompt", lines=1)
-            negative_prompt = gr.Textbox(label="Negative prompt", elem_id="txt2img_negative_prompt", show_label=False, placeholder="Negative prompt", lines=1)
+            txt2img_negative_prompt = gr.Textbox(label="Negative prompt", elem_id="txt2img_negative_prompt", show_label=False, placeholder="Negative prompt", lines=1)
             txt2img_prompt_style = gr.Dropdown(label="Style", show_label=False, elem_id="style_index", choices=[k for k, v in shared.prompt_styles.items()], value=next(iter(shared.prompt_styles.keys())), visible=len(shared.prompt_styles) > 1)
             roll = gr.Button('Roll', elem_id="txt2img_roll", visible=len(shared.artist_db.artists) > 0)
             submit = gr.Button('Generate', elem_id="txt2img_generate", variant='primary')
@@ -303,7 +308,7 @@ def create_ui(txt2img, img2img, run_extras, run_pnginfo):
                 _js="submit",
                 inputs=[
                     txt2img_prompt,
-                    negative_prompt,
+                    txt2img_negative_prompt,
                     txt2img_prompt_style,
                     steps,
                     sampler_index,
@@ -365,10 +370,11 @@ def create_ui(txt2img, img2img, run_extras, run_pnginfo):
             )
 
     with gr.Blocks(analytics_enabled=False) as img2img_interface:
-        with gr.Row():
+        with gr.Row(elem_id="toprow"):
             img2img_prompt = gr.Textbox(label="Prompt", elem_id="img2img_prompt", show_label=False, placeholder="Prompt", lines=1)
-            negative_prompt = gr.Textbox(label="Negative prompt", elem_id="img2img_negative_prompt", show_label=False, placeholder="Negative prompt", lines=1)
+            img2img_negative_prompt = gr.Textbox(label="Negative prompt", elem_id="img2img_negative_prompt", show_label=False, placeholder="Negative prompt", lines=1)
             img2img_prompt_style = gr.Dropdown(label="Style", show_label=False, elem_id="style_index", choices=[k for k, v in shared.prompt_styles.items()], value=next(iter(shared.prompt_styles.keys())), visible=len(shared.prompt_styles) > 1)
+            img2img_interrogate = gr.Button('Interrogate', elem_id="img2img_interrogate", variant='primary')
             submit = gr.Button('Generate', elem_id="img2img_generate", variant='primary')
             check_progress = gr.Button('Check progress', elem_id="check_progress", visible=False)
 
@@ -435,7 +441,6 @@ def create_ui(txt2img, img2img, run_extras, run_pnginfo):
                         img2img_save_style = gr.Button('Save prompt as style')
 
                 progressbar = gr.HTML(elem_id="progressbar")
-                style_dummpy = gr.Textbox(visible=False)
 
                 with gr.Group():
                     html_info = gr.HTML()
@@ -461,6 +466,7 @@ def create_ui(txt2img, img2img, run_extras, run_pnginfo):
                     inpaint_full_res: gr_show(is_inpaint),
                     inpainting_mask_invert: gr_show(is_inpaint),
                     denoising_strength_change_factor: gr_show(is_loopback),
+                    img2img_interrogate: gr_show(not is_inpaint),
                 }
 
             switch_mode.change(
@@ -480,6 +486,7 @@ def create_ui(txt2img, img2img, run_extras, run_pnginfo):
                     inpaint_full_res,
                     inpainting_mask_invert,
                     denoising_strength_change_factor,
+                    img2img_interrogate,
                 ]
             )
 
@@ -502,7 +509,7 @@ def create_ui(txt2img, img2img, run_extras, run_pnginfo):
                 _js="submit",
                 inputs=[
                     img2img_prompt,
-                    negative_prompt,
+                    img2img_negative_prompt,
                     img2img_prompt_style,
                     init_img,
                     init_img_with_mask,
@@ -540,6 +547,12 @@ def create_ui(txt2img, img2img, run_extras, run_pnginfo):
             img2img_prompt.submit(**img2img_args)
             submit.click(**img2img_args)
 
+            img2img_interrogate.click(
+                fn=interrogate,
+                inputs=[init_img],
+                outputs=[img2img_prompt],
+            )
+
             check_progress.click(
                 fn=check_progress_call,
                 show_progress=False,
@@ -566,11 +579,14 @@ def create_ui(txt2img, img2img, run_extras, run_pnginfo):
                 ]
             )
 
-            for button, propmt in zip([txt2img_save_style, img2img_save_style], [txt2img_prompt, img2img_prompt]):
+            dummy_component = gr.Label(visible=False)
+            for button, (prompt, negative_prompt) in zip([txt2img_save_style, img2img_save_style], [(txt2img_prompt, txt2img_negative_prompt), (img2img_prompt, img2img_negative_prompt)]):
                 button.click(
                     fn=add_style,
                     _js="ask_for_style_name",
-                    inputs=[style_dummpy, propmt],
+                    # Have to pass empty dummy component here, because the JavaScript and Python function have to accept
+                    # the same number of parameters, but we only know the style-name after the JavaScript prompt
+                    inputs=[dummy_component, prompt, negative_prompt],
                     outputs=[txt2img_prompt_style, img2img_prompt_style],
                 )
 
@@ -797,6 +813,7 @@ def create_ui(txt2img, img2img, run_extras, run_pnginfo):
 
     visit(txt2img_interface, loadsave, "txt2img")
     visit(img2img_interface, loadsave, "img2img")
+    visit(extras_interface, loadsave, "extras")
 
     if not error_loading and (not os.path.exists(ui_config_file) or settings_count != len(ui_settings)):
         with open(ui_config_file, "w", encoding="utf8") as file:
