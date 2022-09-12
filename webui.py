@@ -49,7 +49,8 @@ def load_model_from_config(config, ckpt, verbose=False):
     if len(u) > 0 and verbose:
         print("unexpected keys:")
         print(u)
-
+    if cmd_opts.opt_channelslast:
+        model = model.to(memory_format=torch.channels_last)
     model.eval()
     return model
 
@@ -115,7 +116,13 @@ def webui():
         run_pnginfo=modules.extras.run_pnginfo
     )
 
-    demo.launch(share=cmd_opts.share, server_name="0.0.0.0" if cmd_opts.listen else None, server_port=cmd_opts.port)
+    demo.launch(
+        share=cmd_opts.share,
+        server_name="0.0.0.0" if cmd_opts.listen else None,
+        server_port=cmd_opts.port,
+        debug=cmd_opts.gradio_debug,
+        auth=[tuple(cred.split(':')) for cred in cmd_opts.gradio_auth.strip('"').split(',')] if cmd_opts.gradio_auth else None,
+    )
 
 
 if __name__ == "__main__":
