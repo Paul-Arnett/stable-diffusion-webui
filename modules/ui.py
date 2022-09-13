@@ -93,7 +93,7 @@ def save_files(js_data, images):
         at_start = file.tell() == 0
         writer = csv.writer(file)
         if at_start:
-            writer.writerow(["prompt", "seed", "width", "height", "sampler", "cfgs", "steps", "filename"])
+            writer.writerow(["prompt", "seed", "width", "height", "sampler", "cfgs", "steps", "filename", "negative_prompt"])
 
         filename_base = str(int(time.time() * 1000))
         for i, filedata in enumerate(images):
@@ -108,7 +108,7 @@ def save_files(js_data, images):
 
             filenames.append(filename)
 
-        writer.writerow([data["prompt"], data["seed"], data["width"], data["height"], data["sampler"], data["cfg_scale"], data["steps"], filenames[0]])
+        writer.writerow([data["prompt"], data["seed"], data["width"], data["height"], data["sampler"], data["cfg_scale"], data["steps"], filenames[0], data["negative_prompt"]])
 
     return '', '', plaintext_to_html(f"Saved: {filenames[0]}")
 
@@ -202,8 +202,8 @@ def create_seed_inputs():
 
     with gr.Row():
         subseed_strength = gr.Slider(label='Variation strength', value=0.0, minimum=0, maximum=1, step=0.01, visible=False)
-        seed_resize_from_h = gr.Slider(minimum=0, maximum=2048, step=64, label="Resize seed from height", value=0, visible=False)
         seed_resize_from_w = gr.Slider(minimum=0, maximum=2048, step=64, label="Resize seed from width", value=0, visible=False)
+        seed_resize_from_h = gr.Slider(minimum=0, maximum=2048, step=64, label="Resize seed from height", value=0, visible=False)
 
     def change_visiblity(show):
 
@@ -273,8 +273,8 @@ def create_ui(txt2img, img2img, run_extras, run_pnginfo):
                 cfg_scale = gr.Slider(minimum=1.0, maximum=30.0, step=0.5, label='CFG Scale', value=7.0)
 
                 with gr.Group():
-                    height = gr.Slider(minimum=64, maximum=2048, step=64, label="Height", value=512)
                     width = gr.Slider(minimum=64, maximum=2048, step=64, label="Width", value=512)
+                    height = gr.Slider(minimum=64, maximum=2048, step=64, label="Height", value=512)
 
                 seed, subseed, subseed_strength, seed_resize_from_h, seed_resize_from_w = create_seed_inputs()
 
@@ -418,8 +418,8 @@ def create_ui(txt2img, img2img, run_extras, run_pnginfo):
                     denoising_strength_change_factor = gr.Slider(minimum=0.9, maximum=1.1, step=0.01, label='Denoising strength change factor', value=1, visible=False)
 
                 with gr.Group():
-                    height = gr.Slider(minimum=64, maximum=2048, step=64, label="Height", value=512)
                     width = gr.Slider(minimum=64, maximum=2048, step=64, label="Width", value=512)
+                    height = gr.Slider(minimum=64, maximum=2048, step=64, label="Height", value=512)
 
                 seed, subseed, subseed_strength, seed_resize_from_h, seed_resize_from_w = create_seed_inputs()
 

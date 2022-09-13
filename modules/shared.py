@@ -25,7 +25,7 @@ parser.add_argument("--gfpgan-model", type=str, help="GFPGAN model file name", d
 parser.add_argument("--no-half", action='store_true', help="do not switch the model to 16-bit floats")
 parser.add_argument("--no-progressbar-hiding", action='store_true', help="do not hide progressbar in gradio UI (we hide it because it slows down ML if you have hardware accleration in browser)")
 parser.add_argument("--max-batch-count", type=int, default=16, help="maximum batch count value for the UI")
-parser.add_argument("--embeddings-dir", type=str, default='embeddings', help="embeddings directory for textual inversion (default: embeddings)")
+parser.add_argument("--embeddings-dir", type=str, default=os.path.join(script_path, 'embeddings'), help="embeddings directory for textual inversion (default: embeddings)")
 parser.add_argument("--allow-code", action='store_true', help="allow custom script execution from webui")
 parser.add_argument("--medvram", action='store_true', help="enable stable diffusion model optimizations for sacrificing a little speed for low VRM usage")
 parser.add_argument("--lowvram", action='store_true', help="enable stable diffusion model optimizations for sacrificing a lot of speed for very low VRM usage")
@@ -97,7 +97,10 @@ class Options:
     data = None
     hide_dirs = {"visible": False} if cmd_opts.hide_ui_dir_config else None
     data_labels = {
-        "samples_filename_format": OptionInfo("", "Samples filename format using following tags: [steps],[cfg],[prompt],[prompt_spaces],[width],[height],[sampler],[seed]. Leave blank for default."),
+        "samples_filename_pattern": OptionInfo("", "Images filename pattern"),
+        "save_to_dirs": OptionInfo(False, "Save images to a subdirectory"),
+        "grid_save_to_dirs": OptionInfo(False, "Save grids to subdirectory"),
+        "directories_filename_pattern": OptionInfo("", "Directory name pattern"),
         "outdir_samples": OptionInfo("", "Output directory for images; if empty, defaults to two directories below", component_args=hide_dirs),
         "outdir_txt2img_samples": OptionInfo("outputs/txt2img-images", 'Output directory for txt2img images', component_args=hide_dirs),
         "outdir_img2img_samples": OptionInfo("outputs/img2img-images", 'Output directory for img2img images', component_args=hide_dirs),
@@ -105,12 +108,10 @@ class Options:
         "outdir_grids": OptionInfo("", "Output directory for grids; if empty, defaults to two directories below", component_args=hide_dirs),
         "outdir_txt2img_grids": OptionInfo("outputs/txt2img-grids", 'Output directory for txt2img grids', component_args=hide_dirs),
         "outdir_img2img_grids": OptionInfo("outputs/img2img-grids", 'Output directory for img2img grids', component_args=hide_dirs),
-        "save_to_dirs": OptionInfo(False, "When writing images, create a directory with name derived from the prompt"),
-        "grid_save_to_dirs": OptionInfo(False, "When writing grids, create a directory with name derived from the prompt"),
-        "save_to_dirs_prompt_len": OptionInfo(10, "When using above, how many words from prompt to put into directory name", gr.Slider, {"minimum": 1, "maximum": 32, "step": 1}),
         "outdir_save": OptionInfo("log/images", "Directory for saving images using the Save button", component_args=hide_dirs),
         "samples_save": OptionInfo(True, "Save indiviual samples"),
         "samples_format": OptionInfo('png', 'File format for individual samples'),
+        "filter_nsfw": OptionInfo(False, "Filter NSFW content"),
         "grid_save": OptionInfo(True, "Save image grids"),
         "return_grid": OptionInfo(True, "Show grid in results for web"),
         "grid_format": OptionInfo('png', 'File format for grids'),
@@ -120,6 +121,8 @@ class Options:
         "jpeg_quality": OptionInfo(80, "Quality for saved jpeg images", gr.Slider, {"minimum": 1, "maximum": 100, "step": 1}),
         "export_for_4chan": OptionInfo(True, "If PNG image is larger than 4MB or any dimension is larger than 4000, downscale and save copy as JPG"),
         "enable_pnginfo": OptionInfo(True, "Save text information about generation parameters as chunks to png files"),
+        "add_model_hash_to_info": OptionInfo(False, "Add model hash to generation information"),
+        "img2img_color_correction": OptionInfo(False, "Apply color correction to img2img results to match original colors."),
         "font": OptionInfo("", "Font for image grids that have text"),
         "enable_emphasis": OptionInfo(True, "Use (text) to make model pay more attention to text text and [text] to make it pay less attention"),
         "save_txt": OptionInfo(False, "Create a text file next to every image with generation parameters."),
@@ -179,6 +182,7 @@ if os.path.exists(config_filename):
 sd_upscalers = []
 
 sd_model = None
+sd_model_hash = ''
 
 progress_print_out = sys.stdout
 
