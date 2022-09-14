@@ -70,6 +70,39 @@ RealESRGAN into the directory with ESRGAN models. Thank you.
 - _*(optional)*_ place `GFPGANv1.3.pth` into webui directory, next to `webui.bat`.
 - run `webui-user.bat` from Windows Explorer. Run it as a normal user, ***not*** as administrator.
 
+### Running on AMD GPUs
+See the [wiki article](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Running-using-AMD-GPUs) by [cryzed](https://github.com/cryzed).
+
+### Linux Automatic installation/launch
+
+Prequisites:
+- For Debian-based:
+```commandline
+sudo apt install wget git python3 python3-venv
+```
+- For Red Hat-based:
+```commandline
+sudo dnf install wget git python3
+```
+
+
+- If you want to install to default directory `/home/$(whoami)/stable-diffusion-webui/`, you can launch directly:
+```commandline
+bash <(wget -qO- https://raw.githubusercontent.com/AUTOMATIC1111/stable-diffusion-webui/master/webui.sh)
+```
+
+
+- If you want to customize the installation just `git clone` the repo where you want it,
+change the variables in `webui-user.sh` and launch in console `bash webui.sh`.
+
+
+
+- place `model.ckpt` into webui directory, next to `webui.py`.
+- _*(optional)*_ place `GFPGANv1.3.pth` into webui directory, next to `webui.py`.
+- run `bash webui.sh`. Run it as a normal user, ***not*** as root.
+
+
+
 #### Troubleshooting
 
 - if your version of Python is not in PATH (or if another version is), edit `webui-user.bat`, and modify the
@@ -308,6 +341,8 @@ After that follow the instructions in the `Manual instructions` section starting
 ### Custom scripts from users
 
 [A list of custom scripts](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Custom-scripts-from-users), along with installation instructions.
+
+
 
 ### img2img alternative test
 - see [this post](https://www.reddit.com/r/StableDiffusion/comments/xboy90/a_better_way_of_doing_img2img_by_finding_the/) on ebaumsworld.com for context.

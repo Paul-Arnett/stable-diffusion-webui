@@ -46,14 +46,14 @@ def apply_color_correction(correction, image):
 
 
 class StableDiffusionProcessing:
-    def __init__(self, sd_model=None, outpath_samples=None, outpath_grids=None, prompt="", prompt_style="None", seed=-1, subseed=-1, subseed_strength=0, seed_resize_from_h=-1, seed_resize_from_w=-1, sampler_index=0, batch_size=1, n_iter=1, steps=50, cfg_scale=7.0, width=512, height=512, restore_faces=False, tiling=False, do_not_save_samples=False, do_not_save_grid=False, extra_generation_params=None, overlay_images=None, negative_prompt=None):
+    def __init__(self, sd_model=None, outpath_samples=None, outpath_grids=None, prompt="", styles=None, seed=-1, subseed=-1, subseed_strength=0, seed_resize_from_h=-1, seed_resize_from_w=-1, sampler_index=0, batch_size=1, n_iter=1, steps=50, cfg_scale=7.0, width=512, height=512, restore_faces=False, tiling=False, do_not_save_samples=False, do_not_save_grid=False, extra_generation_params=None, overlay_images=None, negative_prompt=None):
         self.sd_model = sd_model
         self.outpath_samples: str = outpath_samples
         self.outpath_grids: str = outpath_grids
         self.prompt: str = prompt
         self.prompt_for_display: str = None
         self.negative_prompt: str = (negative_prompt or "")
-        self.prompt_style: str = prompt_style
+        self.styles: str = styles
         self.seed: int = seed
         self.subseed: int = subseed
         self.subseed_strength: float = subseed_strength
@@ -182,7 +182,7 @@ def process_images(p: StableDiffusionProcessing) -> Processed:
 
     comments = []
 
-    modules.styles.apply_style(p, shared.prompt_styles[p.prompt_style])
+    shared.prompt_styles.apply_styles(p)
 
     if type(p.prompt) == list:
         all_prompts = p.prompt
@@ -312,12 +312,10 @@ def process_images(p: StableDiffusionProcessing) -> Processed:
             state.nextjob()
 
         unwanted_grid_because_of_img_count = len(output_images) < 2 and opts.grid_only_if_multiple
-        if not p.do_not_save_grid and not unwanted_grid_because_of_img_count:
-            return_grid = opts.return_grid
-
+        if (opts.return_grid or opts.grid_save) and not p.do_not_save_grid and not unwanted_grid_because_of_img_count:
             grid = images.image_grid(output_images, p.batch_size)
 
-            if return_grid:
+            if opts.return_grid:
                 output_images.insert(0, grid)
 
             if opts.grid_save:
