@@ -346,16 +346,20 @@ def save_image(image, path, basename, seed=None, prompt=None, extension='png', i
         if not os.path.exists(fullfn):
             break
 
-    if extension.lower() in ("jpg", "jpeg", "webp"):
-        exif_bytes = piexif.dump({
+    def exif_bytes():
+        return piexif.dump({
             "Exif": {
-                piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(info, encoding="unicode")
+                piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(info or "", encoding="unicode")
             },
         })
-    else:
-        exif_bytes = None
 
-    image.save(fullfn, quality=opts.jpeg_quality, pnginfo=pnginfo, exif=exif_bytes)
+    if extension.lower() in ("jpg", "jpeg", "webp"):
+        image.save(fullfn, quality=opts.jpeg_quality, exif_bytes=exif_bytes())
+    else:
+        image.save(fullfn, quality=opts.jpeg_quality, pnginfo=pnginfo)
+
+    if extension.lower() == "webp":
+        piexif.insert(exif_bytes, fullfn)
 
     target_side_length = 4000
     oversize = image.width > target_side_length or image.height > target_side_length
@@ -367,7 +371,7 @@ def save_image(image, path, basename, seed=None, prompt=None, extension='png', i
         elif oversize:
             image = image.resize((image.width * target_side_length // image.height, target_side_length), LANCZOS)
 
-        image.save(fullfn, quality=opts.jpeg_quality, exif=exif_bytes)
+        image.save(fullfn_without_extension + ".jpg", quality=opts.jpeg_quality, exif_bytes=exif_bytes())
 
     if opts.save_txt and info is not None:
         if opts.save_info_format == "yaml":
