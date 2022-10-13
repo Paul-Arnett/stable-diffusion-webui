@@ -26,3 +26,6 @@ __pycache__
 notification.mp3
 /SwinIR
 /textual_inversion
+storyboard.py
+wildcards
+wildcards.py
