@@ -28,7 +28,6 @@ notification.mp3
 /SwinIR
 /textual_inversion
 .vscode
-*/storyboard
 storyboard.py
 wildcards
 wildcards.py
