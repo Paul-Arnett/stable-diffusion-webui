@@ -28,9 +28,6 @@ notification.mp3
 /SwinIR
 /textual_inversion
 .vscode
-storyboard.py
-wildcards
-wildcards.py
 /extensions
 /test/stdout.txt
 /test/stderr.txt
