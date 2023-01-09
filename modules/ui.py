@@ -20,7 +20,7 @@ from PIL import Image, PngImagePlugin
 from modules.call_queue import wrap_gradio_gpu_call, wrap_queued_call, wrap_gradio_call
 
 from modules import sd_hijack, sd_models, localization, script_callbacks, ui_extensions, deepbooru
-from modules.ui_components import FormRow, FormGroup, ToolButton
+from modules.ui_components import FormRow, FormGroup, ToolButton, FormHTML
 from modules.paths import script_path
 
 from modules.shared import opts, cmd_opts, restricted_opts
@@ -37,7 +37,7 @@ from modules import prompt_parser
 from modules.images import save_image
 from modules.sd_hijack import model_hijack
 from modules.sd_samplers import samplers, samplers_for_img2img
-import modules.textual_inversion.ui
+from modules.textual_inversion import textual_inversion
 import modules.hypernetworks.ui
 from modules.generation_parameters_copypaste import image_from_url_text
 
@@ -256,6 +256,20 @@ def add_style(name: str, prompt: str, negative_prompt: str):
     return [gr.Dropdown.update(visible=True, choices=list(shared.prompt_styles.styles)) for _ in range(4)]
 
 
+def calc_resolution_hires(enable, width, height, hr_scale, hr_resize_x, hr_resize_y):
+    from modules import processing, devices
+
+    if not enable:
+        return ""
+
+    p = processing.StableDiffusionProcessingTxt2Img(width=width, height=height, enable_hr=True, hr_scale=hr_scale, hr_resize_x=hr_resize_x, hr_resize_y=hr_resize_y)
+
+    with devices.autocast():
+        p.init([""], [0], [0])
+
+    return f"resize: from <span class='resolution'>{p.width}x{p.height}</span> to <span class='resolution'>{p.hr_resize_x or p.hr_upscale_to_x}x{p.hr_resize_y or p.hr_upscale_to_y}</span>"
+
+
 def apply_styles(prompt, prompt_neg, style1_name, style2_name):
     prompt = shared.prompt_styles.apply_styles_to_prompt(prompt, [style1_name, style2_name])
     prompt_neg = shared.prompt_styles.apply_negative_styles_to_prompt(prompt_neg, [style1_name, style2_name])
@@ -368,7 +382,7 @@ def update_token_counter(text, steps):
 
     flat_prompts = reduce(lambda list1, list2: list1+list2, prompt_schedules)
     prompts = [prompt_text for step, prompt_text in flat_prompts]
-    tokens, token_count, max_length = max([model_hijack.tokenize(prompt) for prompt in prompts], key=lambda args: args[1])
+    token_count, max_length = max([model_hijack.get_prompt_lengths(prompt) for prompt in prompts], key=lambda args: args[0])
     style_class = ' class="red"' if (token_count > max_length) else ""
     return f"<span {style_class}>{token_count}/{max_length}</span>"
 
@@ -706,6 +720,7 @@ def create_ui():
                             restore_faces = gr.Checkbox(label='Restore faces', value=False, visible=len(shared.face_restorers) > 1, elem_id="txt2img_restore_faces")
                             tiling = gr.Checkbox(label='Tiling', value=False, elem_id="txt2img_tiling")
                             enable_hr = gr.Checkbox(label='Hires. fix', value=False, elem_id="txt2img_enable_hr")
+                            hr_final_resolution = FormHTML(value="", elem_id="txtimg_hr_finalres", label="Upscaled resolution", interactive=False)
 
                     elif category == "hires_fix":
                         with FormGroup(visible=False, elem_id="txt2img_hires_fix") as hr_options:
@@ -728,6 +743,22 @@ def create_ui():
                     elif category == "scripts":
                         with FormGroup(elem_id="txt2img_script_container"):
                             custom_inputs = modules.scripts.scripts_txt2img.setup_ui()
+
+            hr_resolution_preview_inputs = [enable_hr, width, height, hr_scale, hr_resize_x, hr_resize_y]
+            for input in hr_resolution_preview_inputs:
+                input.change(
+                    fn=calc_resolution_hires,
+                    inputs=hr_resolution_preview_inputs,
+                    outputs=[hr_final_resolution],
+                    show_progress=False,
+                )
+                input.change(
+                    None,
+                    _js="onCalcResolutionHires",
+                    inputs=hr_resolution_preview_inputs,
+                    outputs=[],
+                    show_progress=False,
+                )
 
             txt2img_gallery, generation_info, html_info, html_log = create_output_panel("txt2img", opts.outdir_txt2img_samples)
             parameters_copypaste.bind_buttons({"txt2img": txt2img_paste}, None, txt2img_prompt)
@@ -790,6 +821,7 @@ def create_ui():
                 fn=lambda x: gr_show(x),
                 inputs=[enable_hr],
                 outputs=[hr_options],
+                show_progress = False,
             )
 
             txt2img_paste_fields = [
@@ -1290,6 +1322,9 @@ def create_ui():
                         outputs=[process_focal_crop_row],
                     )
 
+                def get_textual_inversion_template_names():
+                    return sorted([x for x in textual_inversion.textual_inversion_templates])
+
                 with gr.Tab(label="Train"):
                     gr.HTML(value="<p style='margin-bottom: 0.7em'>Train an embedding or Hypernetwork; you must specify a directory with a set of 1:1 ratio images <a href=\"https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Textual-Inversion\" style=\"font-weight:bold;\">[wiki]</a></p>")
                     with FormRow():
@@ -1313,9 +1348,14 @@ def create_ui():
 
                     dataset_directory = gr.Textbox(label='Dataset directory', placeholder="Path to directory with input images", elem_id="train_dataset_directory")
                     log_directory = gr.Textbox(label='Log directory', placeholder="Path to directory where to write outputs", value="textual_inversion", elem_id="train_log_directory")
-                    template_file = gr.Textbox(label='Prompt template file', value=os.path.join(script_path, "textual_inversion_templates", "style_filewords.txt"), elem_id="train_template_file")
+
+                    with FormRow():
+                        template_file = gr.Dropdown(label='Prompt template', value="style_filewords.txt", elem_id="train_template_file", choices=get_textual_inversion_template_names())
+                        create_refresh_button(template_file, textual_inversion.list_textual_inversion_templates, lambda: {"choices": get_textual_inversion_template_names()}, "refrsh_train_template_file")
+
                     training_width = gr.Slider(minimum=64, maximum=2048, step=8, label="Width", value=512, elem_id="train_training_width")
                     training_height = gr.Slider(minimum=64, maximum=2048, step=8, label="Height", value=512, elem_id="train_training_height")
+                    varsize = gr.Checkbox(label="Do not resize images", value=False, elem_id="train_varsize")
                     steps = gr.Number(label='Max steps', value=100000, precision=0, elem_id="train_steps")
 
                     with FormRow():
@@ -1422,6 +1462,7 @@ def create_ui():
                 log_directory,
                 training_width,
                 training_height,
+                varsize,
                 steps,
                 clip_grad_mode,
                 clip_grad_value,
@@ -1453,6 +1494,7 @@ def create_ui():
                 log_directory,
                 training_width,
                 training_height,
+                varsize,
                 steps,
                 clip_grad_mode,
                 clip_grad_value,
